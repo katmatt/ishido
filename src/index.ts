@@ -34,6 +34,9 @@ type Board = {
     background: number[]
     tiles: Tile[]
     stoneStack: Stone[]
+    nextStone: Stone | undefined,
+    score: number,
+    fourWays: number
 }
 
 async function loadGameAssets(): Promise<GameAssets> {
@@ -46,8 +49,8 @@ async function loadGameAssets(): Promise<GameAssets> {
     }
 }
 
-function isInitialStonePosition(args: { x: number, y: number}): boolean {
-    const { x, y } = args
+function isInitialStonePosition(position: Position2D): boolean {
+    const { x, y } = position
     return ((x == 0 || x == BOARD_WIDTH - 1) && (y == 0 || y == BOARD_HEIGHT - 1))
         || (x == BOARD_WIDTH / 2 && y == BOARD_HEIGHT / 2 )
         || (x == BOARD_WIDTH / 2 - 1 && y == BOARD_HEIGHT / 2 - 1)
@@ -118,10 +121,14 @@ function generateBoard(): Board {
         }    
     }
     shuffle(stoneStack)
+    const nextStone = stoneStack.pop()
     return {
         background,
         tiles,
-        stoneStack
+        stoneStack,
+        nextStone,
+        score: 0,
+        fourWays: 0,
     }
 }
 
@@ -149,9 +156,9 @@ function drawBoard(ctx: CanvasRenderingContext2D, board: Board, assets: GameAsse
         }
     }
     ctx.drawImage(assets.statusarea, TILE_WIDTH * BOARD_WIDTH, 0)
-    const nextTile = board.stoneStack[0]
-    if (nextTile) {
-        const { color, symbol } = nextTile
+    const { nextStone } = board
+    if (nextStone) {
+        const { color, symbol } = nextStone
         const tileX = color * TILE_WIDTH
         const tileY = symbol * TILE_HEIGHT
         ctx.drawImage(assets.tileset, tileX, tileY, TILE_WIDTH, TILE_HEIGHT, 
@@ -159,6 +166,76 @@ function drawBoard(ctx: CanvasRenderingContext2D, board: Board, assets: GameAsse
     }
     ctx.textAlign = "center"
     ctx.fillText(`Stones: ${board.stoneStack.length}`, 800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2, TILE_HEIGHT * 3)
+    ctx.fillText(`Score: ${board.score}`, 800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2, TILE_HEIGHT * 4)
+    ctx.fillText(`4 ways: ${board.fourWays}`, 800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2, TILE_HEIGHT * 5)
+}
+
+type Position2D = {
+    x: number
+    y: number
+}
+
+function addMouseClickEventHandler(canvas: HTMLCanvasElement, eventHandler: (position: Position2D) => void) {
+    canvas.addEventListener('click', (event: MouseEvent) => {
+        var rect = canvas.getBoundingClientRect();
+        const position = {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top
+        };
+        eventHandler(position)
+    })
+}
+
+type MatchResult = "conflict" | "none" | "match"
+
+function match(s1: Stone, s2: Tile): MatchResult {
+    return s2.type === "stone" ? (s1.color === s2.color || s1.symbol === s2.symbol ? "match" : "conflict") : "none"
+}
+
+function getMatchResults(board: Board, position: Position2D) {
+    const { nextStone, tiles } = board
+    const { x , y } = position
+    const matchResults: MatchResult[] = []                
+    if (nextStone) {
+        if (tiles[x + y * BOARD_WIDTH].type === "empty") {
+            if (x > 0) {
+                const left = tiles[x - 1 + y * BOARD_WIDTH]
+                matchResults.push(match(nextStone, left))
+            }
+            if (x < BOARD_WIDTH - 1) {
+                const right = tiles[x + 1 + y * BOARD_WIDTH]
+                matchResults.push(match(nextStone, right))
+            }
+            if (y > 0) {
+                const top = tiles[x + (y - 1) * BOARD_WIDTH]
+                matchResults.push(match(nextStone, top))
+            }
+            if (y < BOARD_HEIGHT - 1) {
+                const bottom = tiles[x + (y + 1) * BOARD_WIDTH]
+                matchResults.push(match(nextStone, bottom))
+            }
+        
+        }    
+    }
+    return matchResults
+}
+
+function getValidPositions(board: Board): Position2D[] {
+    const { nextStone } = board
+    const validPositions: Position2D[] = []
+    if (nextStone) {
+        for (let x = 0; x < BOARD_WIDTH; x++) {
+            for (let y = 0; y < BOARD_HEIGHT; y++) {
+                const matchResults = getMatchResults(board, {x, y})       
+                const conflict = matchResults.find((match) => match === "conflict")
+                const matches = matchResults.filter((match) => match === "match")
+                if (!conflict && matches.length > 0) {
+                    validPositions.push({x, y})
+                }
+            }
+        }
+    }
+    return validPositions
 }
 
 async function initGame() {
@@ -174,6 +251,35 @@ async function initGame() {
     console.log("Images loaded!")
     const board = generateBoard()
     drawBoard(ctx, board, gameAssets)
+    const doMove = (position: Position2D) => {
+        const validPositions = getValidPositions(board)
+        const x = Math.floor(position.x / TILE_WIDTH)
+        const y = Math.floor(position.y / TILE_HEIGHT)
+        const isValidPosition = validPositions.find((pos) => pos.x === x && pos.y === y)
+        const { nextStone } = board
+        if (isValidPosition && nextStone) {
+            const matches = getMatchResults(board, { x, y }).filter((match) => match === "match")
+            switch (matches.length) {
+                case 1: 
+                    board.score += 1 
+                    break
+                case 2: 
+                    board.score += 5 
+                    break
+                case 3: 
+                    board.score += 20 
+                    break
+                case 4: 
+                    board.score += 100
+                    board.fourWays += 1 
+                    break
+            }
+            board.tiles[x + y * BOARD_WIDTH] = nextStone
+            board.nextStone = board.stoneStack.pop()
+            drawBoard(ctx, board, gameAssets)
+        }
+    }
+    addMouseClickEventHandler(canvas, doMove)
 }
 
 window.onload = initGame
