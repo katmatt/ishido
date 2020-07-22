@@ -36,7 +36,8 @@ type Board = {
     stoneStack: Stone[]
     nextStone: Stone | undefined,
     score: number,
-    fourWays: number
+    fourWays: number,
+    showHint: boolean
 }
 
 async function loadGameAssets(): Promise<GameAssets> {
@@ -129,18 +130,21 @@ function generateBoard(): Board {
         nextStone,
         score: 0,
         fourWays: 0,
+        showHint: false
     }
 }
 
 function drawBoard(ctx: CanvasRenderingContext2D, board: Board, assets: GameAssets) {
+    const validPositions: Position2D[] = board.showHint ? getValidPositions(board) : [] 
     for (let x = 0; x < BOARD_WIDTH; x++) {
         for (let y = 0; y < BOARD_HEIGHT; y++) {
             const tile = board.tiles[x + y * BOARD_WIDTH]
             switch (tile.type) {
                 case "empty": {
                     const background = board.background[x + y * BOARD_WIDTH]
+                    const hintY = validPositions.find((pos) => pos.x === x && pos.y == y) ? TILE_HEIGHT * 2 : 0
                     const tileY = (y == 0 || y == BOARD_HEIGHT - 1) || (x == 0 || x == BOARD_WIDTH - 1) ? 0 : TILE_HEIGHT
-                    ctx.drawImage(assets.background, background * TILE_WIDTH, tileY, TILE_WIDTH, TILE_HEIGHT, 
+                    ctx.drawImage(assets.background, background * TILE_WIDTH, hintY + tileY, TILE_WIDTH, TILE_HEIGHT, 
                         x * TILE_WIDTH, y * TILE_HEIGHT, TILE_WIDTH, TILE_HEIGHT)
                     break
                 }
@@ -251,6 +255,11 @@ async function initGame() {
     console.log("Images loaded!")
     const board = generateBoard()
     drawBoard(ctx, board, gameAssets)
+    const showHint = () => {
+        board.showHint = true,
+        drawBoard(ctx, board, gameAssets)
+    }
+    setTimeout(showHint, 5 * 1000)
     const doMove = (position: Position2D) => {
         const validPositions = getValidPositions(board)
         const x = Math.floor(position.x / TILE_WIDTH)
@@ -276,7 +285,9 @@ async function initGame() {
             }
             board.tiles[x + y * BOARD_WIDTH] = nextStone
             board.nextStone = board.stoneStack.pop()
+            board.showHint = false
             drawBoard(ctx, board, gameAssets)
+            setTimeout(showHint, 5 * 1000)
         }
     }
     addMouseClickEventHandler(canvas, doMove)
