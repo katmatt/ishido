@@ -77,9 +77,27 @@ function generatePlacedStones(): Stone[] {
     return placedStones
 }
 
-function equals(s1: Stone, s2: Stone) {
-    return s1.type === "stone" && s2.type === "stone"
-        && s1.color === s2.color && s1.symbol === s2.symbol
+/**
+ * Returns an equality check predicate bound to the given parameter.
+ * This function implements a shallow equality test and can't be used with nested objects!
+ */
+function equals(o1: Record<string, any>): (o2: Record<string, any>) => boolean {
+    return (o2: Record<string, any>) => {
+        const keys = Object.keys(o1)
+        if (keys.length !== Object.keys(o2).length) {
+            return false
+        }
+        for (const key of keys) {
+            if (o2.hasOwnProperty(key)) {
+                if (o1[key] !== o2[key]) {
+                    return false
+                }
+            } else {
+                return false
+            }
+        }
+        return true
+    }
 }
 
 /**
@@ -114,7 +132,7 @@ function generateBoard(): Board {
                     type: "stone", color, symbol
                 }
                 const previousPlacedStones = placedStones
-                placedStones = placedStones.filter(s => !equals(s, stone))
+                placedStones = placedStones.filter(s => !equals(stone)(s))
                 if (previousPlacedStones.length === placedStones.length) {
                     stoneStack.push(stone)
                 }
@@ -142,7 +160,8 @@ function drawBoard(ctx: CanvasRenderingContext2D, board: Board, assets: GameAsse
             switch (tile.type) {
                 case "empty": {
                     const background = board.background[x + y * BOARD_WIDTH]
-                    const hintY = validPositions.find((pos) => pos.x === x && pos.y == y) ? TILE_HEIGHT * 2 : 0
+                    const hintY = validPositions.find(equals({x, y})) 
+                        ? TILE_HEIGHT * 2 : 0
                     const tileY = (y == 0 || y == BOARD_HEIGHT - 1) || (x == 0 || x == BOARD_WIDTH - 1) ? 0 : TILE_HEIGHT
                     ctx.drawImage(assets.background, background * TILE_WIDTH, hintY + tileY, TILE_WIDTH, TILE_HEIGHT, 
                         x * TILE_WIDTH, y * TILE_HEIGHT, TILE_WIDTH, TILE_HEIGHT)
@@ -264,7 +283,7 @@ async function initGame() {
         const validPositions = getValidPositions(board)
         const x = Math.floor(position.x / TILE_WIDTH)
         const y = Math.floor(position.y / TILE_HEIGHT)
-        const isValidPosition = validPositions.find((pos) => pos.x === x && pos.y === y)
+        const isValidPosition = validPositions.find(equals({x, y}))
         const { nextStone } = board
         if (isValidPosition && nextStone) {
             const matches = getMatchResults(board, { x, y }).filter((match) => match === "match")

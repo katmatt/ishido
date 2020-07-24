@@ -12,7 +12,7 @@
     "start": "serve dist"
   },
   "devDependencies": {
-    "typescript": "^3.4.3",
+    "typescript": "^3.9.7",
     "cpx": "^1.5.0",
     "serve": "^11.3.2",
     "rimraf": "^3.0.2"
