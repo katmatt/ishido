@@ -261,7 +261,10 @@ function draw(ctx: CanvasRenderingContext2D, game: Game) {
   ctx.fillStyle = 'rgb(222, 0, 0)'
   const {newButton} = assets
   ctx.fillRect(newButton.left, newButton.top, newButton.right - newButton.left, newButton.bottom - newButton.top)
+  ctx.lineJoin = 'round'
+  ctx.lineWidth = 2
   ctx.fillStyle = 'rgb(0, 0, 0)'
+  ctx.strokeRect(newButton.left, newButton.top, newButton.right - newButton.left, newButton.bottom - newButton.top)
   ctx.fillText('New', 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2, 484)
   const remainingStones = game.stoneStack.length
   const rows = Math.floor(remainingStones / 10)
@@ -281,6 +284,21 @@ function draw(ctx: CanvasRenderingContext2D, game: Game) {
     const alpha = counter % 5 === 0 ? 0.5 : 0.67
     ctx.fillStyle = `rgba(32, 16, 16, ${alpha})`
     ctx.fillRect(startX + counter * (width + width / 2), startY - (height + height / 2) * rows, width, height)
+  }
+  if (!game.board.nextStone || game.stoneStack.length === 0 || game.validPositions.length === 0) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'
+    ctx.fillRect(132 + 45, 132 + 37, 788 - 132 * 2, 528 - 132 * 2)
+    ctx.fillStyle = 'rgb(0, 10, 240)'
+    ctx.fillRect(132, 132, 788 - 132 * 2, 528 - 132 * 2)
+    ctx.fillStyle = 'rgb(0, 0, 0)'
+    ctx.lineJoin = 'round'
+    ctx.lineWidth = 3
+    ctx.strokeRect(132, 132, 788 - 132 * 2, 528 - 132 * 2)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.font = '48px Times sans-serif'
+    ctx.fillStyle = 'rgb(0, 0, 0)'
+    ctx.fillText('Game over!', 788 / 2, 528 / 2)
   }
 }
 
@@ -466,33 +484,18 @@ async function initGame() {
             break
         }
       }
-
+      if (!game.board.nextStone || game.stoneStack.length === 0 || game.validPositions.length === 0) {
+        const finishBonus = stonesLeftBonus[game.stoneStack.length]
+        if (finishBonus) {
+          game.score += finishBonus
+        }
+      }
       board.tiles[boardPosition.x][boardPosition.y] = nextStone
       board.nextStone = game.stoneStack.pop()
       game.showHint = false
       game.validPositions = getValidPositions(board)
       draw(ctx, game)
       setTimeout(showHint, 5 * 1000)
-    }
-    if (!game.board.nextStone || game.stoneStack.length === 0) {
-      const finishBonus = stonesLeftBonus[game.stoneStack.length]
-      if (finishBonus) {
-        game.score += finishBonus
-        draw(ctx, game)
-      }
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'
-      ctx.fillRect(132 + 45, 132 + 37, 788 - 132 * 2, 528 - 132 * 2)
-      ctx.fillStyle = 'rgb(0, 10, 240)'
-      ctx.fillRect(132, 132, 788 - 132 * 2, 528 - 132 * 2)
-      ctx.fillStyle = 'rgb(0, 0, 0)'
-      ctx.lineJoin = 'round'
-      ctx.lineWidth = 3
-      ctx.strokeRect(132, 132, 788 - 132 * 2, 528 - 132 * 2)
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.font = '48px Times sans-serif'
-      ctx.fillStyle = 'rgb(0, 0, 0)'
-      ctx.fillText('Game over!', 788 / 2, 528 / 2)
     }
     const {newButton} = assets
     if (

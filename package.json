@@ -1,7 +1,7 @@
 {
   "name": "ishido",
   "version": "1.0.0",
-  "description": "A browser based version of the Ishido board game.",
+  "description": "A browser-based version of the Ishido board game.",
   "main": "index.js",
   "author": "Matthias Köster",
   "license": "MIT",
