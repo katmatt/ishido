@@ -7,10 +7,18 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
+type Rect2D = {
+    left: number
+    top: number
+    right: number
+    bottom: number
+}
+
 type Assets = {
   background: HTMLImageElement
   tileset: HTMLImageElement
   statusarea: HTMLImageElement
+  newButton: Rect2D
 }
 
 const BOARD_WIDTH = 12
@@ -46,15 +54,30 @@ type Game = {
   assets: Assets
 }
 
-async function loadAssets(): Promise<Assets> {
+const buttonFont = "18px Times serif bold"
+
+async function loadAssets(ctx: CanvasRenderingContext2D): Promise<Assets> {
   const backgroundLoader = loadImage('Background.png')
   const tilesetLoader = loadImage('Tileset.png')
   const statusareaLoader = loadImage('Statusarea.png')
   const [background, tileset, statusarea] = await Promise.all([backgroundLoader, tilesetLoader, statusareaLoader])
+  
+  ctx.font = buttonFont
+  ctx.textAlign = 'center'
+  const measure = ctx.measureText("New")
+  const left = 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2 - 8 - measure.width  / 2
+  const top =  484 - 24 
+  const newButton = {
+    left,
+    top,
+    right: left + measure.width + 16,
+    bottom: top + 24 +8
+  }
   return {
     background,
     tileset,
     statusarea,
+    newButton
   }
 }
 
@@ -233,10 +256,10 @@ function draw(ctx: CanvasRenderingContext2D, game: Game) {
   ctx.fillStyle = "rgba(16, 0, 0, 0.75)"
   ctx.fillText(`${game.score}`, 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2, 140)
   ctx.fillText(`${game.fourWays}`, 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2, 185)
-  ctx.font = "18px sans-serif bold"
-  const measure = ctx.measureText("New")
+  ctx.font = buttonFont
   ctx.fillStyle = "rgb(222, 0, 0)"
-  ctx.fillRect(788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2 - 4 - measure.width  / 2, 484 - 24, measure.width + 8, 24 + 8)
+  const {newButton} = assets
+  ctx.fillRect(newButton.left, newButton.top, newButton.right - newButton.left, newButton.bottom - newButton.top)
   ctx.fillStyle = "rgb(0, 0, 0)"
   ctx.fillText("New", 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2, 484)
   const remainingStones = game.stoneStack.length
@@ -246,14 +269,17 @@ function draw(ctx: CanvasRenderingContext2D, game: Game) {
   const height = 15
   const startY = 444 - (width + width / 2) * 3
   const startX = BOARD_WIDTH * TILE_WIDTH + 18 + width / 2
-  ctx.fillStyle = "rgba(32, 16, 16, 0.5)"
   for (let i = 0; i < rows; i++) {
       for (let counter = 0; counter < 10; counter++) {
+        const alpha = counter % 5 === 0 ? 0.5 : 0.67
+        ctx.fillStyle = `rgba(32, 16, 16, ${alpha})`
         ctx.fillRect(startX + counter * (width + width / 2) , startY - (height + height / 2) * i, width, height)  
       }
   }
   for (let counter = 0; counter < remainder; counter++) {
-    ctx.fillRect(startX + counter * (width + width / 2) , startY - (height + height / 2) * rows, width, height)  
+    const alpha = counter % 5 === 0 ? 0.5 : 0.67
+    ctx.fillStyle = `rgba(32, 16, 16, ${alpha})`
+ctx.fillRect(startX + counter * (width + width / 2) , startY - (height + height / 2) * rows, width, height)  
   }
 }
 
@@ -262,15 +288,16 @@ type Position2D = {
   y: number
 }
 
-function addMouseClickEventHandler(canvas: HTMLCanvasElement, eventHandler: (position: Position2D) => void) {
-  canvas.addEventListener('click', (event: MouseEvent) => {
+function addMouseClickEventHandler(canvas: HTMLCanvasElement, eventHandler: (position: Position2D) => void): void {
+  const listener = (event: MouseEvent) => {
     var rect = canvas.getBoundingClientRect()
     const position = {
       x: event.clientX - rect.left,
       y: event.clientY - rect.top,
     }
     eventHandler(position)
-  })
+  }
+  canvas.addEventListener('click', listener)
 }
 
 type MatchResult = NotMatching | Match
@@ -398,7 +425,7 @@ async function initGame() {
     alert("Your browser isn't supported by this game!")
     return
   }
-  const assets = await loadAssets()
+  const assets = await loadAssets(ctx)
   const game = newGame(assets)
   draw(ctx, game)
   const showHint = () => {
@@ -407,16 +434,16 @@ async function initGame() {
   setTimeout(showHint, 5 * 1000)
   const doMove = (position: Position2D) => {
     const {validPositions} = game
-    const pos = {
+    const boardPosition = {
       x: Math.floor(position.x / TILE_WIDTH),
       y: Math.floor(position.y / TILE_HEIGHT),
     }
-    const isValidPosition = validPositions.find(equals(pos))
+    const isValidPosition = validPositions.find(equals(boardPosition))
     const {board} = game
     const {nextStone} = board
     if (nextStone && isValidPosition) {
-      const matches = getMatchResults(board, pos).filter(isNonEmptyMatch)
-      if (!isBeyond(pos)) {
+      const matches = getMatchResults(board, boardPosition).filter(isNonEmptyMatch)
+      if (!isBeyond(boardPosition)) {
         switch (matches.length) {
           case 1:
             game.score += 1
@@ -437,12 +464,25 @@ async function initGame() {
             break
         }
       }
-      board.tiles[pos.x][pos.y] = nextStone
+
+      board.tiles[boardPosition.x][boardPosition.y] = nextStone
       board.nextStone = game.stoneStack.pop()
       game.showHint = false
       game.validPositions = getValidPositions(board)
       draw(ctx, game)
       setTimeout(showHint, 5 * 1000)
+    }
+    const {newButton} = assets
+    if (position.x >= newButton.left && position.x <= newButton.right && position.y >= newButton.top && position.y <= newButton.bottom)  {
+        console.log("new game")
+        const _ = newGame(assets)
+        game.board = _.board
+        game.stoneStack = _.stoneStack
+        game.validPositions = _.validPositions
+        game.fourWays = 0
+        game.score = 0
+        game.showHint = false
+        draw(ctx, game)
     }
   }
   addMouseClickEventHandler(canvas, doMove)
