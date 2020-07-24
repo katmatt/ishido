@@ -230,6 +230,7 @@ function draw(ctx: CanvasRenderingContext2D, game: Game) {
   }
   ctx.textAlign = 'center'
   ctx.font = "24px Times sans-serif"
+  ctx.fillStyle = "rgba(16, 0, 0, 0.75)"
   ctx.fillText(`${game.score}`, 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2, 140)
   ctx.fillText(`${game.fourWays}`, 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2, 185)
   ctx.font = "18px sans-serif bold"
@@ -238,6 +239,22 @@ function draw(ctx: CanvasRenderingContext2D, game: Game) {
   ctx.fillRect(788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2 - 4 - measure.width  / 2, 484 - 24, measure.width + 8, 24 + 8)
   ctx.fillStyle = "rgb(0, 0, 0)"
   ctx.fillText("New", 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2, 484)
+  const remainingStones = game.stoneStack.length
+  const rows = Math.floor(remainingStones / 10)
+  const remainder = remainingStones % 10
+  const width = 5
+  const height = 15
+  const startY = 444 - (width + width / 2) * 3
+  const startX = BOARD_WIDTH * TILE_WIDTH + 18 + width / 2
+  ctx.fillStyle = "rgba(32, 16, 16, 0.5)"
+  for (let i = 0; i < rows; i++) {
+      for (let counter = 0; counter < 10; counter++) {
+        ctx.fillRect(startX + counter * (width + width / 2) , startY - (height + height / 2) * i, width, height)  
+      }
+  }
+  for (let counter = 0; counter < remainder; counter++) {
+    ctx.fillRect(startX + counter * (width + width / 2) , startY - (height + height / 2) * rows, width, height)  
+  }
 }
 
 type Position2D = {
