@@ -8,10 +8,10 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 type Rect2D = {
-    left: number
-    top: number
-    right: number
-    bottom: number
+  left: number
+  top: number
+  right: number
+  bottom: number
 }
 
 type Assets = {
@@ -54,30 +54,30 @@ type Game = {
   assets: Assets
 }
 
-const buttonFont = "18px Times serif bold"
+const buttonFont = '18px Times serif bold'
 
 async function loadAssets(ctx: CanvasRenderingContext2D): Promise<Assets> {
   const backgroundLoader = loadImage('Background.png')
   const tilesetLoader = loadImage('Tileset.png')
   const statusareaLoader = loadImage('Statusarea.png')
   const [background, tileset, statusarea] = await Promise.all([backgroundLoader, tilesetLoader, statusareaLoader])
-  
+
   ctx.font = buttonFont
   ctx.textAlign = 'center'
-  const measure = ctx.measureText("New")
-  const left = 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2 - 8 - measure.width  / 2
-  const top =  484 - 24 
+  const measure = ctx.measureText('New')
+  const left = 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2 - 8 - measure.width / 2
+  const top = 484 - 24
   const newButton = {
     left,
     top,
     right: left + measure.width + 16,
-    bottom: top + 24 +8
+    bottom: top + 24 + 8,
   }
   return {
     background,
     tileset,
     statusarea,
-    newButton
+    newButton,
   }
 }
 
@@ -251,17 +251,18 @@ function draw(ctx: CanvasRenderingContext2D, game: Game) {
     }
     drawStone(ctx, assets.tileset, nextStone, pos)
   }
+  ctx.textBaseline = 'alphabetic'
   ctx.textAlign = 'center'
-  ctx.font = "24px Times sans-serif"
-  ctx.fillStyle = "rgba(16, 0, 0, 0.75)"
+  ctx.font = '24px Times sans-serif'
+  ctx.fillStyle = 'rgba(16, 0, 0, 0.75)'
   ctx.fillText(`${game.score}`, 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2, 140)
   ctx.fillText(`${game.fourWays}`, 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2, 185)
   ctx.font = buttonFont
-  ctx.fillStyle = "rgb(222, 0, 0)"
+  ctx.fillStyle = 'rgb(222, 0, 0)'
   const {newButton} = assets
   ctx.fillRect(newButton.left, newButton.top, newButton.right - newButton.left, newButton.bottom - newButton.top)
-  ctx.fillStyle = "rgb(0, 0, 0)"
-  ctx.fillText("New", 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2, 484)
+  ctx.fillStyle = 'rgb(0, 0, 0)'
+  ctx.fillText('New', 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2, 484)
   const remainingStones = game.stoneStack.length
   const rows = Math.floor(remainingStones / 10)
   const remainder = remainingStones % 10
@@ -270,16 +271,16 @@ function draw(ctx: CanvasRenderingContext2D, game: Game) {
   const startY = 444 - (width + width / 2) * 3
   const startX = BOARD_WIDTH * TILE_WIDTH + 18 + width / 2
   for (let i = 0; i < rows; i++) {
-      for (let counter = 0; counter < 10; counter++) {
-        const alpha = counter % 5 === 0 ? 0.5 : 0.67
-        ctx.fillStyle = `rgba(32, 16, 16, ${alpha})`
-        ctx.fillRect(startX + counter * (width + width / 2) , startY - (height + height / 2) * i, width, height)  
-      }
+    for (let counter = 0; counter < 10; counter++) {
+      const alpha = counter % 5 === 0 ? 0.5 : 0.67
+      ctx.fillStyle = `rgba(32, 16, 16, ${alpha})`
+      ctx.fillRect(startX + counter * (width + width / 2), startY - (height + height / 2) * i, width, height)
+    }
   }
   for (let counter = 0; counter < remainder; counter++) {
     const alpha = counter % 5 === 0 ? 0.5 : 0.67
     ctx.fillStyle = `rgba(32, 16, 16, ${alpha})`
-ctx.fillRect(startX + counter * (width + width / 2) , startY - (height + height / 2) * rows, width, height)  
+    ctx.fillRect(startX + counter * (width + width / 2), startY - (height + height / 2) * rows, width, height)
   }
 }
 
@@ -416,6 +417,7 @@ function getValidPositions(board: Board): Position2D[] {
 }
 
 const fourwayBonuses = [25, 50, 100, 200, 400, 600, 800, 1000, 5000, 10000, 25000, 50000]
+const stonesLeftBonus = [1000, 500, 100]
 
 async function initGame() {
   const canvas = document.getElementById('ishido') as HTMLCanvasElement
@@ -472,17 +474,42 @@ async function initGame() {
       draw(ctx, game)
       setTimeout(showHint, 5 * 1000)
     }
-    const {newButton} = assets
-    if (position.x >= newButton.left && position.x <= newButton.right && position.y >= newButton.top && position.y <= newButton.bottom)  {
-        console.log("new game")
-        const _ = newGame(assets)
-        game.board = _.board
-        game.stoneStack = _.stoneStack
-        game.validPositions = _.validPositions
-        game.fourWays = 0
-        game.score = 0
-        game.showHint = false
+    if (!game.board.nextStone || game.stoneStack.length === 0) {
+      const finishBonus = stonesLeftBonus[game.stoneStack.length]
+      if (finishBonus) {
+        game.score += finishBonus
         draw(ctx, game)
+      }
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'
+      ctx.fillRect(132 + 45, 132 + 37, 788 - 132 * 2, 528 - 132 * 2)
+      ctx.fillStyle = 'rgb(0, 10, 240)'
+      ctx.fillRect(132, 132, 788 - 132 * 2, 528 - 132 * 2)
+      ctx.fillStyle = 'rgb(0, 0, 0)'
+      ctx.lineJoin = 'round'
+      ctx.lineWidth = 3
+      ctx.strokeRect(132, 132, 788 - 132 * 2, 528 - 132 * 2)
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.font = '48px Times sans-serif'
+      ctx.fillStyle = 'rgb(0, 0, 0)'
+      ctx.fillText('Game over!', 788 / 2, 528 / 2)
+    }
+    const {newButton} = assets
+    if (
+      position.x >= newButton.left &&
+      position.x <= newButton.right &&
+      position.y >= newButton.top &&
+      position.y <= newButton.bottom
+    ) {
+      console.log('new game')
+      const _ = newGame(assets)
+      game.board = _.board
+      game.stoneStack = _.stoneStack
+      game.validPositions = _.validPositions
+      game.fourWays = 0
+      game.score = 0
+      game.showHint = false
+      draw(ctx, game)
     }
   }
   addMouseClickEventHandler(canvas, doMove)
