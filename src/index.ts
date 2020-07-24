@@ -34,7 +34,7 @@ type Board = {
   background: number[][]
   tiles: Tile[][]
   stoneStack: Stone[]
-  nextStone: Stone | undefined
+  nextStone?: Stone
   score: number
   fourWays: number
   showHint: boolean
@@ -44,11 +44,7 @@ async function loadGameAssets(): Promise<GameAssets> {
   const backgroundLoader = loadImage('Background.png')
   const tilesetLoader = loadImage('Tileset.png')
   const statusareaLoader = loadImage('Statusarea.png')
-  const [background, tileset, statusarea] = await Promise.all([
-    backgroundLoader,
-    tilesetLoader,
-    statusareaLoader,
-  ])
+  const [background, tileset, statusarea] = await Promise.all([backgroundLoader, tilesetLoader, statusareaLoader])
   return {
     background,
     tileset,
@@ -130,9 +126,7 @@ function generateBoard(): Board {
     tiles[x] = []
     for (let y = 0; y < BOARD_HEIGHT; y++) {
       background[x][y] = randomInt(4)
-      const tile: Tile = isInitialStonePosition({x, y})
-        ? (initialStones.pop() as Tile)
-        : {type: 'empty'}
+      const tile: Tile = isInitialStonePosition({x, y}) ? (initialStones.pop() as Tile) : {type: 'empty'}
       tiles[x][y] = tile
     }
   }
@@ -237,17 +231,9 @@ function drawBoard(ctx: CanvasRenderingContext2D, board: Board, assets: GameAsse
     )
   }
   ctx.textAlign = 'center'
-  ctx.fillText(
-    `Stones: ${board.stoneStack.length}`,
-    800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2,
-    TILE_HEIGHT * 3
-  )
+  ctx.fillText(`Stones: ${board.stoneStack.length}`, 800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2, TILE_HEIGHT * 3)
   ctx.fillText(`Score: ${board.score}`, 800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2, TILE_HEIGHT * 4)
-  ctx.fillText(
-    `4 ways: ${board.fourWays}`,
-    800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2,
-    TILE_HEIGHT * 5
-  )
+  ctx.fillText(`4 ways: ${board.fourWays}`, 800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2, TILE_HEIGHT * 5)
 }
 
 type Position2D = {
@@ -255,10 +241,7 @@ type Position2D = {
   y: number
 }
 
-function addMouseClickEventHandler(
-  canvas: HTMLCanvasElement,
-  eventHandler: (position: Position2D) => void
-) {
+function addMouseClickEventHandler(canvas: HTMLCanvasElement, eventHandler: (position: Position2D) => void) {
   canvas.addEventListener('click', (event: MouseEvent) => {
     var rect = canvas.getBoundingClientRect()
     const position = {
@@ -367,7 +350,7 @@ function getValidPositions(board: Board): Position2D[] {
               case 3:
                 valid =
                   (matchResult.symbolMatches === 1 && matchResult.colorMatches === 2) ||
-                  (matchResult.symbolMatches === 1 && matchResult.colorMatches === 2)
+                  (matchResult.symbolMatches === 2 && matchResult.colorMatches === 1)
                 break
               case 4:
                 valid = matchResult.symbolMatches === 2 && matchResult.colorMatches === 2

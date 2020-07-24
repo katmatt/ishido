@@ -7,10 +7,12 @@
         "preserveConstEnums": true,
         "outDir": "dist",
         "sourceMap": true,
+        "sourceRoot": "/src",
         "lib": [
             "es6",
             "dom",
         ],
+        "target": "ES2016",
     },
     "include": [
         "src/**/*"

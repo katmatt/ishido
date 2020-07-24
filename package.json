@@ -8,10 +8,10 @@
   "prettier": "prettier-airbnb-config",
   "scripts": {
     "clean": "rimraf ./dist",
-    "build": "tsc && cpx assets/**/*.{html,png,jpg} dist",
+    "build": "tsc && cpx assets/**/*.{html,png,jpg} dist && cpx src/** dist/src",
     "prestart": "yarn build",
     "start": "serve dist",
-    "format:ts": "prettier --write --no-semi src"
+    "format:ts": "prettier --write --no-semi --print-width 120 src"
   },
   "devDependencies": {
     "typescript": "^3.9.7",
