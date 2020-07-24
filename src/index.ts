@@ -229,9 +229,15 @@ function draw(ctx: CanvasRenderingContext2D, game: Game) {
     drawStone(ctx, assets.tileset, nextStone, pos)
   }
   ctx.textAlign = 'center'
-  ctx.fillText(`Stones: ${game.stoneStack.length}`, 800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2, TILE_HEIGHT * 3)
-  ctx.fillText(`Score: ${game.score}`, 800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2, TILE_HEIGHT * 4)
-  ctx.fillText(`4 ways: ${game.fourWays}`, 800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2, TILE_HEIGHT * 5)
+  ctx.font = "24px Times sans-serif"
+  ctx.fillText(`${game.score}`, 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2, 140)
+  ctx.fillText(`${game.fourWays}`, 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2, 185)
+  ctx.font = "18px sans-serif bold"
+  const measure = ctx.measureText("New")
+  ctx.fillStyle = "rgb(222, 0, 0)"
+  ctx.fillRect(788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2 - 4 - measure.width  / 2, 484 - 24, measure.width + 8, 24 + 8)
+  ctx.fillStyle = "rgb(0, 0, 0)"
+  ctx.fillText("New", 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2, 484)
 }
 
 type Position2D = {
