@@ -475,8 +475,8 @@ async function initGame() {
             game.score += 4 * 2 ** game.fourWays
             break
           case 4:
-            game.fourWays += 1
             game.score += 8 * 2 ** game.fourWays
+            game.fourWays += 1
             const fourwayBonus = fourwayBonuses[game.fourWays - 1]
             if (fourwayBonus) {
               game.score += fourwayBonus
