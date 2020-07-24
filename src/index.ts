@@ -7,7 +7,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
-type GameAssets = {
+type Assets = {
   background: HTMLImageElement
   tileset: HTMLImageElement
   statusarea: HTMLImageElement
@@ -33,14 +33,20 @@ type Tile = EmptyTile | Stone
 type Board = {
   background: number[][]
   tiles: Tile[][]
-  stoneStack: Stone[]
   nextStone?: Stone
+}
+
+type Game = {
+  board: Board
+  stoneStack: Stone[]
+  validPositions: Position2D[]
   score: number
   fourWays: number
   showHint: boolean
+  assets: Assets
 }
 
-async function loadGameAssets(): Promise<GameAssets> {
+async function loadAssets(): Promise<Assets> {
   const backgroundLoader = loadImage('Background.png')
   const tilesetLoader = loadImage('Tileset.png')
   const statusareaLoader = loadImage('Statusarea.png')
@@ -116,7 +122,7 @@ function shuffle<T>(array: T[]) {
   }
 }
 
-function generateBoard(): Board {
+function newGame(assets: Assets): Game {
   const background: number[][] = []
   const tiles: Tile[][] = []
   let placedStones = generatePlacedStones()
@@ -149,14 +155,19 @@ function generateBoard(): Board {
   }
   shuffle(stoneStack)
   const nextStone = stoneStack.pop()
-  return {
+  const board = {
     background,
     tiles,
-    stoneStack,
     nextStone,
+  }
+  return {
+    board,
+    stoneStack,
     score: 0,
     fourWays: 0,
     showHint: false,
+    validPositions: getValidPositions(board),
+    assets,
   }
 }
 
@@ -168,8 +179,17 @@ function isBeyond(position: Position2D): boolean {
   return y == 0 || y == BOARD_HEIGHT - 1 || x == 0 || x == BOARD_WIDTH - 1
 }
 
-function drawBoard(ctx: CanvasRenderingContext2D, board: Board, assets: GameAssets) {
-  const validPositions: Position2D[] = board.showHint ? getValidPositions(board) : []
+function drawStone(ctx: CanvasRenderingContext2D, tileset: HTMLImageElement, stone: Stone, position: Position2D) {
+  const {color, symbol} = stone
+  const tileX = color * TILE_WIDTH
+  const tileY = symbol * TILE_HEIGHT
+  const {x, y} = position
+  ctx.drawImage(tileset, tileX, tileY, TILE_WIDTH, TILE_HEIGHT, x, y, TILE_WIDTH, TILE_HEIGHT)
+}
+
+function draw(ctx: CanvasRenderingContext2D, game: Game) {
+  const hintPositions = game.showHint ? game.validPositions : []
+  const {board, assets} = game
   for (let x = 0; x < BOARD_WIDTH; x++) {
     for (let y = 0; y < BOARD_HEIGHT; y++) {
       const tile = board.tiles[x][y]
@@ -177,7 +197,7 @@ function drawBoard(ctx: CanvasRenderingContext2D, board: Board, assets: GameAsse
       switch (tile.type) {
         case 'empty': {
           const background = board.background[x][y]
-          const hintY = validPositions.find(equals(pos)) ? TILE_HEIGHT * 2 : 0
+          const hintY = hintPositions.find(equals(pos)) ? TILE_HEIGHT * 2 : 0
           const tileY = isBeyond(pos) ? 0 : TILE_HEIGHT
           ctx.drawImage(
             assets.background,
@@ -193,20 +213,7 @@ function drawBoard(ctx: CanvasRenderingContext2D, board: Board, assets: GameAsse
           break
         }
         case 'stone': {
-          const {color, symbol} = tile
-          const tileX = color * TILE_WIDTH
-          const tileY = symbol * TILE_HEIGHT
-          ctx.drawImage(
-            assets.tileset,
-            tileX,
-            tileY,
-            TILE_WIDTH,
-            TILE_HEIGHT,
-            x * TILE_WIDTH,
-            y * TILE_HEIGHT,
-            TILE_WIDTH,
-            TILE_HEIGHT
-          )
+          drawStone(ctx, assets.tileset, tile, {x: x * TILE_WIDTH, y: y * TILE_HEIGHT})
           break
         }
       }
@@ -215,25 +222,16 @@ function drawBoard(ctx: CanvasRenderingContext2D, board: Board, assets: GameAsse
   ctx.drawImage(assets.statusarea, TILE_WIDTH * BOARD_WIDTH, 0)
   const {nextStone} = board
   if (nextStone) {
-    const {color, symbol} = nextStone
-    const tileX = color * TILE_WIDTH
-    const tileY = symbol * TILE_HEIGHT
-    ctx.drawImage(
-      assets.tileset,
-      tileX,
-      tileY,
-      TILE_WIDTH,
-      TILE_HEIGHT,
-      800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2 - TILE_WIDTH / 2,
-      TILE_HEIGHT / 2,
-      TILE_WIDTH,
-      TILE_HEIGHT
-    )
+    const pos = {
+      x: 788 - (788 - TILE_WIDTH * BOARD_WIDTH) / 2 - TILE_WIDTH / 2,
+      y: TILE_HEIGHT / 2,
+    }
+    drawStone(ctx, assets.tileset, nextStone, pos)
   }
   ctx.textAlign = 'center'
-  ctx.fillText(`Stones: ${board.stoneStack.length}`, 800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2, TILE_HEIGHT * 3)
-  ctx.fillText(`Score: ${board.score}`, 800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2, TILE_HEIGHT * 4)
-  ctx.fillText(`4 ways: ${board.fourWays}`, 800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2, TILE_HEIGHT * 5)
+  ctx.fillText(`Stones: ${game.stoneStack.length}`, 800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2, TILE_HEIGHT * 3)
+  ctx.fillText(`Score: ${game.score}`, 800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2, TILE_HEIGHT * 4)
+  ctx.fillText(`4 ways: ${game.fourWays}`, 800 - (800 - TILE_WIDTH * BOARD_WIDTH) / 2, TILE_HEIGHT * 5)
 }
 
 type Position2D = {
@@ -377,48 +375,50 @@ async function initGame() {
     alert("Your browser isn't supported by this game!")
     return
   }
-  const gameAssets = await loadGameAssets()
-  const board = generateBoard()
-  drawBoard(ctx, board, gameAssets)
+  const assets = await loadAssets()
+  const game = newGame(assets)
+  draw(ctx, game)
   const showHint = () => {
-    ;(board.showHint = true), drawBoard(ctx, board, gameAssets)
+    ;(game.showHint = true), draw(ctx, game)
   }
   setTimeout(showHint, 5 * 1000)
   const doMove = (position: Position2D) => {
-    const validPositions = getValidPositions(board)
+    const {validPositions} = game
     const pos = {
       x: Math.floor(position.x / TILE_WIDTH),
       y: Math.floor(position.y / TILE_HEIGHT),
     }
     const isValidPosition = validPositions.find(equals(pos))
+    const {board} = game
     const {nextStone} = board
     if (nextStone && isValidPosition) {
       const matches = getMatchResults(board, pos).filter(isNonEmptyMatch)
       if (!isBeyond(pos)) {
         switch (matches.length) {
           case 1:
-            board.score += 1
+            game.score += 1
             break
           case 2:
-            board.score += 2
+            game.score += 2
             break
           case 3:
-            board.score += 4
+            game.score += 4
             break
           case 4:
-            board.score += 8
-            board.fourWays += 1
-            const fourwayBonus = fourwayBonuses[board.fourWays - 1]
+            game.score += 8
+            game.fourWays += 1
+            const fourwayBonus = fourwayBonuses[game.fourWays - 1]
             if (fourwayBonus) {
-              board.score += fourwayBonus
+              game.score += fourwayBonus
             }
             break
         }
       }
       board.tiles[pos.x][pos.y] = nextStone
-      board.nextStone = board.stoneStack.pop()
-      board.showHint = false
-      drawBoard(ctx, board, gameAssets)
+      board.nextStone = game.stoneStack.pop()
+      game.showHint = false
+      game.validPositions = getValidPositions(board)
+      draw(ctx, game)
       setTimeout(showHint, 5 * 1000)
     }
   }
