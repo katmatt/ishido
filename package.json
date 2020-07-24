@@ -5,16 +5,20 @@
   "main": "index.js",
   "author": "Matthias Köster",
   "license": "MIT",
+  "prettier": "prettier-airbnb-config",
   "scripts": {
     "clean": "rimraf ./dist",
     "build": "tsc && cpx assets/**/*.{html,png,jpg} dist",
     "prestart": "yarn build",
-    "start": "serve dist"
+    "start": "serve dist",
+    "format:ts": "prettier --write --no-semi src"
   },
   "devDependencies": {
     "typescript": "^3.9.7",
     "cpx": "^1.5.0",
     "serve": "^11.3.2",
-    "rimraf": "^3.0.2"
+    "rimraf": "^3.0.2",
+    "prettier": "^2.0.5",
+    "prettier-airbnb-config": "^1.0.0"
   }
 }
